@@ -36,6 +36,19 @@ Running `sbx run claude` again in the same folder reconnects to the same sandbox
 and `sbx rm` stop and remove one. Parallel agents in one sandbox: `sbx run --clone claude . -- agents`
 ([Claude Code in sbx](https://docs.docker.com/ai/sandboxes/agents/claude-code/)).
 
+## Moving a workspace off Trail of Bits' devcontainer
+
+One workspace at a time; the others keep using `devc`:
+
+```bash
+cd ~/workspace/myproject
+~/workspace/claude-container/remove_trailofbits.sh
+```
+
+It copies the container's Claude sessions to `~/.claude/projects` (`devc sync`), deletes the container, its
+volumes and image (`devc destroy`), and renames `.devcontainer/` to `.devcontainer.trailofbits/`. To go back:
+`mv .devcontainer.trailofbits .devcontainer && devc up`, then log in again.
+
 ## Skills
 
 Sandboxes don't read the host's `~/.claude`. Skills go through a shared store on the host
