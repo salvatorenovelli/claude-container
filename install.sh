@@ -1,21 +1,20 @@
 #!/usr/bin/env bash
 # Sets up an Ubuntu host to run Claude Code in Docker Sandboxes (`sbx`, a microVM
-# per sandbox), with `cl` for background sessions. Safe to re-run: it upgrades
-# what is already there.
+# per sandbox). Safe to re-run: it upgrades what is already there.
 #
 #   ./install.sh
 #
-# Installs:
-#   - Docker's apt repository and the `docker-sbx` package (Docker Engine not needed)
-#   - dtach, and `cl` in ~/.local/bin, linked to this repo
+# Does only this:
+#   - checks for Ubuntu 24.04+ and KVM
+#   - adds you to the kvm group
+#   - adds Docker's apt repository and installs `docker-sbx` (Docker Engine not needed)
+#   - runs `sbx login` on the first install
 # Requires Ubuntu 24.04+ and KVM: https://docs.docker.com/ai/sandboxes/install/
 
 set -euo pipefail
 
 OS_RELEASE="${OS_RELEASE:-/etc/os-release}"
 KVM_DEV="${KVM_DEV:-/dev/kvm}"
-BIN_DIR="$HOME/.local/bin"
-REPO_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 
 say() { printf '\033[0;34m[install]\033[0m %s\n' "$1"; }
 die() { printf '\033[0;31m[install]\033[0m %s\n' "$1" >&2; exit 1; }
@@ -43,16 +42,9 @@ else
   curl -fsSL https://get.docker.com -o "$script"
   sudo REPO_ONLY=1 sh "$script"
   sudo apt-get install -y -qq docker-sbx
+  say "logging in to Docker Sandboxes"
+  sbx login
 fi
-command -v dtach >/dev/null || sudo apt-get install -y -qq dtach
 
-mkdir -p "$BIN_DIR"
-ln -sf "$REPO_DIR/bin/cl" "$BIN_DIR/cl"
-say "linked $BIN_DIR/cl -> $REPO_DIR/bin/cl"
-
-case ":$PATH:" in
-  *":$BIN_DIR:"*) ;;
-  *) say "add to your shell profile: export PATH=\"\$HOME/.local/bin:\$PATH\"" ;;
-esac
 $relogin && say "sign out and back in (or run 'newgrp kvm') so the kvm group applies"
-say "done. First time only: sbx login"
+say "done"
