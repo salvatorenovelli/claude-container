@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# cl: named dtach sessions you can leave and come back to.
+#
+#   cl <name> create   start session <name> (a login shell) and attach to it;
+#                      attaches instead if it's already running
+#   cl <name>          attach to session <name>
+#   cl                 list running sessions
+#
+# Detach with Ctrl-\ ; whatever runs inside (e.g. Claude) keeps going.
+# The session ends when its shell exits. Sessions belong to the user who
+# created them, so run as that user (e.g. after `sudo -u <user> -i`).
+
+set -euo pipefail
+
+dir="/tmp/cl-$USER"
+mkdir -p -m 700 "$dir"
+
+if [ $# -eq 0 ]; then
+  shopt -s nullglob
+  socks=("$dir"/*.sock)
+  [ ${#socks[@]} -gt 0 ] || { echo "no sessions"; exit 0; }
+  for s in "${socks[@]}"; do basename "$s" .sock; done
+  exit 0
+fi
+
+name="$1"
+sock="$dir/$name.sock"
+
+# -r winch: on attach, tell the program the window size changed so it redraws.
+# -z: don't let dtach grab Ctrl-Z, so it reaches the program.
+case "${2:-}" in
+  create) exec dtach -A "$sock" -r winch -z "${SHELL:-bash}" -l ;;
+  "")
+    if [ ! -S "$sock" ]; then
+      echo "cl: no session '$name' (start it with: cl $name create)" >&2
+      exit 1
+    fi
+    exec dtach -a "$sock" -r winch -z ;;
+  *) echo "usage: cl [<name> [create]]" >&2; exit 1 ;;
+esac
